@@ -72,7 +72,7 @@ Multiple AutoGen agents with different investment perspectives **debate** and re
 2. **InvestmentDirector** starts the discussion with portfolio summary
 3. Each agent takes turns providing their perspective
 4. Agents **debate** specific products and strategies
-5. **RiskController** can veto dangerous recommendations (【否决】)
+5. **RiskController** can veto dangerous recommendations (VETO)
 6. **InvestmentDirector** synthesizes consensus into final decisions
 7. Generate HTML report with discussion transcript + consensus + token usage
 
