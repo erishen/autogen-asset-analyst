@@ -25,7 +25,7 @@ Multiple AutoGen agents with different investment perspectives **debate** and re
  │                 │ │                 │ │   (VETO power)  │
  └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
           │                    │                    │
-          │        RoundRobinGroupChat              │
+          │        SelectorGroupChat               │
           │          (Debate & Discuss)             │
           │                    │                    │
           └────────────────────┼────────────────────┘
