@@ -1,0 +1,75 @@
+[project]
+name = "autogen-asset-analyst"
+version = "0.2.0"
+description = "Investment Research Roundtable - Multiple AutoGen agents debate and reach consensus on portfolio decisions"
+authors = [
+    { name = "Erishen Sun" }
+]
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = { text = "MIT" }
+keywords = ["autogen", "asset", "roundtable", "multi-agent", "investment", "debate"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    "investkit-utils",
+    "autogen-agentchat>=0.4.0",
+    "autogen-ext>=0.4.0",
+    "openai>=1.0.0",
+    "tiktoken>=0.7.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "pydantic-settings>=2.0.0,<3.0.0",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "rich>=13.0.0,<15.0.0",
+    "typer>=0.9.0,<1.0.0",
+    "markdown>=3.5.0,<4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=7.1.0",
+    "mypy>=1.0.0",
+    "bandit>=1.9.0",
+]
+
+[project.scripts]
+autogen-analyst = "autogen_asset_analyst.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/autogen_asset_analyst"]
+
+[tool.uv]
+package = true
+dev-dependencies = [
+    "pytest>=7.4.0",
+    "pytest-cov>=7.1.0",
+    "mypy>=1.0.0",
+    "bandit>=1.9.0",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["autogen_asset_analyst"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.uv.sources]
+investkit-utils = { workspace = true }

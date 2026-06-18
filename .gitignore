@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Environment variables
+.env
+.env.local
+
+# Output
+output/
+
+# Testing
+.pytest_cache/
+
+# Type checking
+.mypy_cache/
+
+# Linting
+.ruff_cache/
