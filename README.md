@@ -68,7 +68,7 @@ Multiple AutoGen agents with different investment perspectives **debate** and re
 
 ### Conversation Flow
 
-1. **DataCollector** gathers portfolio data from asset-lens (reads `投资收益率分析_YYYYMMDD.json`)
+1. **DataCollector** gathers portfolio data from asset-lens (reads `investment_return_analysis_YYYYMMDD.json`)
 2. **InvestmentDirector** starts the discussion with portfolio summary
 3. Each agent takes turns providing their perspective
 4. Agents **debate** specific products and strategies
