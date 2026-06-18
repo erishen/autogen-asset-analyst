@@ -81,7 +81,7 @@ Multiple AutoGen agents with different investment perspectives **debate** and re
 The project reads data from [asset-lens](../asset-lens/) via:
 
 1. `make calculate` - via `CalculateReportGenerator` class
-2. `make analyze` - reads `output/投资收益率分析_YYYYMMDD.json`
+2. `make analyze` - reads `output/investment_return_analysis_YYYYMMDD.json`
 3. `make compare` - optional trend data
 
 The richest data is the JSON output from `analyze`, containing:
