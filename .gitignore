@@ -17,6 +17,7 @@ output/
 
 # Testing
 .pytest_cache/
+.coverage
 
 # Type checking
 .mypy_cache/

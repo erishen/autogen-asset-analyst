@@ -95,7 +95,7 @@ def _build_summary_cards(portfolio_data: dict[str, Any]) -> str:
                 pct = stats.get("percentage", "N/A")
                 type_items.append(
                     f'<span class="type-badge" style="background: #f1f5f9; color: #475569;">'
-                    f"{type_name} {pct}%</span>"
+                    f"{type_name} {pct}</span>"
                 )
         if type_items:
             cards_html += f"""
@@ -113,7 +113,7 @@ def _build_summary_cards(portfolio_data: dict[str, Any]) -> str:
                 pct = stats.get("percentage", "N/A")
                 risk_items.append(
                     f'<span class="type-badge" style="background: #fef2f2; color: #991b1b;">'
-                    f"{risk_name} {pct}%</span>"
+                    f"{risk_name} {pct}</span>"
                 )
         if risk_items:
             cards_html += f"""

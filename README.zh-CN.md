@@ -2,173 +2,109 @@
 
 [English](README.md)
 
-多个 AutoGen 智能体从不同投资视角**辩论**并**达成共识**，做出投资组合决策。与确定性流水线不同，本项目充分利用 AutoGen 的对话式多智能体优势。
+多个 AutoGen 智能体从不同投资视角**辩论**并**达成共识**，做出投资组合决策。结合个人知识库、市场趋势和交易记录，输出简洁可执行的下周操作建议。
 
-## 架构
+## 功能特性
 
-```
-                    ┌─────────────────────┐
-                    │   asset-lens 数据   │
-                    │ (calculate/analyze) │
-                    └──────────┬──────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │   数据收集器         │
-                    │ (读取 JSON 输出)     │
-                    └──────────┬──────────┘
-                               │
-          ┌────────────────────┼────────────────────┐
-          │                    │                    │
- ┌────────▼────────┐ ┌────────▼────────┐ ┌────────▼────────┐
- │ 🏦 价值投资     │ │ 📈 技术分析师   │ │ 🛡️ 风险控制官   │
- │   分析师        │ │                 │ │   (一票否决权)   │
- └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
-          │                    │                    │
-          │        SelectorGroupChat               │
-          │          (辩论 & 讨论)                  │
-          │                    │                    │
-          └────────────────────┼────────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │ 👔 投资总监         │
-                    │   (主持讨论 &       │
-                    │    综合共识)        │
-                    └──────────┬──────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │   HTML 报告         │
-                    │ (辩论记录 +         │
-                    │  共识决策 +         │
-                    │  风险警告)          │
-                    └─────────────────────┘
-```
+- 🏦 **多智能体辩论**：4 个 Agent（价值、技术、风控、总监）辩论投资决策
+- 📚 **个人知识整合**：从 langchain-llm-toolkit RAG 检索投资偏好和策略
+- 📈 **市场趋势分析**：提取近期指数走势（上证、沪深300、纳指、黄金、利率）
+- 💱 **货币感知**：自动识别美元/港元产品，标注 CNY 换算
+- 📝 **交易记录追踪**：读取最近 60 天买卖记录，分析交易模式
+- 🇨🇳 **国内利率环境**：包含存款基准利率、LPR、国债收益率
+- 🛡️ **一票否决**：风控官可否决任何高风险建议
+- 📊 **精简输出**：只输出最终决策，不展示冗长辩论过程
 
-### 智能体
+## 分析流程
 
-| 智能体 | 角色 | 核心特征 |
-|--------|------|----------|
-| **ValueInvestorAgent** 🏦 | 从基本面和长期价值角度评估 | 耐心对待波动，持有优质产品 |
-| **TechnicalAnalystAgent** 📈 | 从趋势和动量角度评估 | 顺势而为，止盈止损 |
-| **RiskControllerAgent** 🛡️ | 风险控制，拥有一票否决权 | 可以否决任何危险建议 |
-| **InvestmentDirectorAgent** 👔 | 主持讨论，综合共识 | 决定何时达成最终结论 |
+1. **asset-lens** 通过 `make calculate`、`make analyze` 生成投资组合数据
+2. **市场快照**：读取最近 4 周指数数据（上证、沪深300、纳指100、黄金、利率）
+3. **交易记录**：提取最近 60 天产品买卖记录
+4. **知识库**：查询 langchain-llm-toolkit RAG 获取个人投资偏好
+5. **数据聚合**：DataCollector 汇总所有数据，含货币换算和年化vs实际收益提醒
+6. **智能体辩论**：各方简要发言，投资总监产出最终决策
+7. **HTML 报告**：生成精简的总结报告
 
-### 与 langgraph-csv-analyst 的关键区别
+## 数据来源
 
-| 特性 | langgraph-csv-analyst | autogen-asset-analyst |
-|------|----------------------|----------------------|
-| 模式 | 确定性流水线 | 对话式辩论 |
-| 智能体交互 | 顺序传递 | 轮流讨论 |
-| 决策方式 | 最后一个智能体决定 | 通过辩论达成共识 |
-| 风险控制 | 仅评估 | 一票否决权 |
-| 数据源 | CSV 文件 | asset-lens JSON 输出 |
-| 输出 | 分析报告 | 辩论记录 + 共识决策 |
-
-### 对话流程
-
-1. **数据收集器** 从 asset-lens 收集投资组合数据（读取 `投资收益率分析_YYYYMMDD.json`）
-2. **投资总监** 以投资组合概要开始讨论
-3. 每个智能体轮流提供自己的观点
-4. 智能体**辩论**具体产品和策略
-5. **风险控制官**可以否决危险的建议（【否决】）
-6. **投资总监**综合各方意见形成共识决策
-7. 生成 HTML 报告，包含讨论记录、共识决策和 Token 用量
-
-## 数据源
-
-项目通过以下方式从 [asset-lens](../asset-lens/) 读取数据：
-
-1. `make calculate` - 通过 `CalculateReportGenerator` 类
-2. `make analyze` - 读取 `output/投资收益率分析_YYYYMMDD.json`
-3. `make compare` - 可选的趋势数据
-
-最丰富的数据来自 `analyze` 的 JSON 输出，包含：
-- `portfolio_summary`（总价值、总利润、收益率）
-- `top_performers`、`low_returns`、`short_term_observation`
-- `type_distribution`、`risk_distribution`
-- `time_group_analysis`
-- `comprehensive_evaluation`
-- `optimization_suggestions`、`investment_advice`
-- `products`（所有产品详情）
+| 来源 | 内容 |
+|------|------|
+| asset-lens JSON | 投资组合概览、产品明细、收益率排名 |
+| 资产汇总 CSV | 周度市场指数（上证、沪深300、纳指、黄金GLD、利率） |
+| 投资产品 CSV | 产品交易记录（买卖时点、金额） |
+| langchain-llm-toolkit RAG | 个人投资偏好、方法论、财务规划文档 |
 
 ## 项目结构
 
 ```
 autogen-asset-analyst/
 ├── src/autogen_asset_analyst/
-│   ├── __init__.py          # 包初始化及版本
-│   ├── agents.py            # 4个 AutoGen 智能体定义
-│   ├── config.py            # Pydantic 配置（从 .env 加载）
-│   ├── analyzer.py          # 圆桌会议编排
-│   ├── data_collector.py    # 从 asset-lens 收集数据
-│   ├── visualization.py     # HTML 报告（含辩论记录）
-│   └── cli.py               # Typer 命令行工具
-├── .env.example
+│   ├── __init__.py              # 包初始化
+│   ├── agents.py                # 4 个 Agent 定义（精简提示词）
+│   ├── config.py                # Pydantic 配置（从 .env 加载）
+│   ├── analyzer.py              # 圆桌讨论编排
+│   ├── data_collector.py        # 数据收集（JSON + CSV + 利率）
+│   ├── knowledge_retriever.py   # RAG 知识库集成
+│   ├── visualization.py         # HTML 报告生成
+│   └── cli.py                   # CLI 入口
+├── tests/
+│   ├── test_analyzer.py         # _build_initial_message 测试
+│   └── test_knowledge_retriever.py  # 知识检索测试
+├── output/                      # 生成的 HTML 报告
+├── .env
 ├── pyproject.toml
-├── README.md
-└── README.zh-CN.md
+└── README.md
 ```
 
 ## 快速开始
 
-### 1. 安装依赖
-
 ```bash
+# 1. 安装依赖
 cd invest-kit/apps/autogen-asset-analyst
 uv sync
-```
 
-### 2. 配置环境
-
-```bash
+# 2. 配置环境
 cp .env.example .env
-# 编辑 .env 文件，设置你的 OPENAI_API_KEY 和 ASSET_LENS_PATH
+# 编辑 .env 设置 OPENAI_API_KEY、ASSET_LENS_PATH、KNOWLEDGE_BASE_PATH
+
+# 3. 准备数据
+cd ../asset-lens && make calculate && make analyze
+
+# 4. 运行分析
+uv run autogen-analyst report --date 20260619 --output ./output
+
+# 5. 运行测试
+uv run pytest tests/ -v
 ```
 
-### 3. 运行圆桌会议
+## 输出格式
 
-```bash
-# 运行完整的圆桌讨论（使用最新分析数据）
-uv run autogen-analyst roundtable
+投资总监输出精简的最终报告：
 
-# 指定 asset-lens 路径
-uv run autogen-analyst roundtable --asset-lens-path ../asset-lens
-
-# 设置最大讨论轮数
-uv run autogen-analyst roundtable --max-rounds 4
-
-# 分析指定日期的数据
-uv run autogen-analyst roundtable --date 20260613
-
-# 生成 HTML 报告
-uv run autogen-analyst report --output ./output
-
-# 生成指定日期的 HTML 报告
-uv run autogen-analyst report --date 20260613 --output ./output
-
-# 显示版本
-uv run autogen-analyst version
 ```
+## 📊 市场判断
+  - 下周市场方向
+  - 关键驱动因素
 
-每次运行后会输出 Token 用量：
-```
-Messages: 5 | Vetoes: 1
-Tokens: 27111 (prompt: 22155, completion: 4956)
+## 📈 操作建议
+  - 加仓（产品 + 金额 + 原因）
+  - 减仓/赎回（产品 + 金额 + 原因）
+  - 持有观望（产品 + 原因）
+
+## ⚠️ 风险提示
 ```
 
 ## 配置
 
-所有设置通过 pydantic-settings 从 `.env` 文件加载：
-
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `DEFAULT_MODEL` | `deepseek-chat` | LLM 模型名称 |
-| `OPENAI_API_KEY` | - | OpenAI 兼容 API 密钥 |
-| `OPENAI_BASE_URL` | `https://api.deepseek.com` | API 基础 URL |
-| `ASSET_LENS_PATH` | `../asset-lens` | asset-lens 项目路径 |
+| `DEFAULT_MODEL` | `deepseek-chat` | LLM 模型 |
+| `OPENAI_API_KEY` | - | API 密钥 |
+| `OPENAI_BASE_URL` | `https://api.deepseek.com` | API 地址 |
+| `ASSET_LENS_PATH` | `../asset-lens` | asset-lens 路径 |
+| `KNOWLEDGE_BASE_PATH` | `../langchain-llm-toolkit` | RAG 知识库路径 |
 | `ROUNDTABLE_MAX_ROUNDS` | `6` | 最大讨论轮数 |
-| `API_HOST` | `0.0.0.0` | API 服务主机 |
-| `API_PORT` | `8002` | API 服务端口 |
 
-## 许可证
+## License
 
 MIT

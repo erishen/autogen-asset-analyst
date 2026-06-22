@@ -4,6 +4,17 @@
 
 Multiple AutoGen agents with different investment perspectives **debate** and reach **consensus** on portfolio decisions. Unlike a deterministic pipeline, this project leverages AutoGen's conversational multi-agent strength.
 
+## Features
+
+- 🏦 **Multi-Agent Debate**: 4 agents (Value, Technical, Risk, Director) debate investment decisions
+- 📚 **Personal Knowledge Integration**: Retrieves user's investment preferences and strategy from langchain-llm-toolkit RAG
+- 📈 **Market Trend Analysis**: Extracts recent index trends (SSE, CSI300, Nasdaq, Gold, Fed rate) for forward-looking analysis
+- 💱 **Currency-Aware**: Automatically detects USD/HKD products and shows CNY equivalent
+- 📝 **Transaction Tracking**: Reads recent buy/sell records to factor in trading patterns
+- 🇨🇳 **Domestic Rate Context**: Includes Chinese deposit rate, LPR, and bond yields for local context
+- 🛡️ **Risk Veto**: Risk Controller can veto any dangerous recommendation
+- 📊 **Compact Output**: Concise final report with market judgment, action items, and risk warnings
+
 ## Architecture
 
 ```
@@ -12,9 +23,19 @@ Multiple AutoGen agents with different investment perspectives **debate** and re
                     │ (calculate/analyze) │
                     └──────────┬──────────┘
                                │
+          ┌────────────────────┼────────────────────┐
+          │                    │                    │
+ ┌────────▼────────┐ ┌────────▼────────┐ ┌────────▼────────┐
+ │ Market Snapshot │ │   Transactions  │ │ Knowledge Base  │
+ │ (index trends,  │ │ (recent 60 days │ │ (personal invest│
+ │  rate context)  │ │  buy/sell recs) │ │  preferences)   │
+ └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
+          │                    │                    │
+          └────────────────────┼────────────────────┘
+                               │
                     ┌──────────▼──────────┐
                     │   DataCollector      │
-                    │ (reads JSON output)  │
+                    │ (reads JSON + CSV)   │
                     └──────────┬──────────┘
                                │
           ┌────────────────────┼────────────────────┐
@@ -22,89 +43,77 @@ Multiple AutoGen agents with different investment perspectives **debate** and re
  ┌────────▼────────┐ ┌────────▼────────┐ ┌────────▼────────┐
  │ 🏦 Value        │ │ 📈 Technical    │ │ 🛡️ Risk         │
  │   Investor      │ │   Analyst       │ │   Controller    │
- │                 │ │                 │ │   (VETO power)  │
+ │   (brief)       │ │   (brief)       │ │   (VETO, brief) │
  └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
           │                    │                    │
           │        SelectorGroupChat               │
-          │          (Debate & Discuss)             │
+          │          (Compact Debate)               │
           │                    │                    │
           └────────────────────┼────────────────────┘
                                │
                     ┌──────────▼──────────┐
                     │ 👔 Investment       │
                     │   Director          │
-                    │ (Moderates &        │
-                    │  Synthesizes        │
-                    │  Consensus)         │
+                    │ (Final Decision     │
+                    │  Market Judgment +  │
+                    │  Action Items +     │
+                    │  Risk Warnings)     │
                     └──────────┬──────────┘
                                │
                     ┌──────────▼──────────┐
                     │   HTML Report       │
-                    │ (Debate Transcript  │
-                    │  + Consensus        │
-                    │  + Risk Warnings)   │
                     └─────────────────────┘
 ```
 
 ### Agents
 
-| Agent | Role | Key Trait |
-|-------|------|-----------|
-| **ValueInvestorAgent** 🏦 | Evaluates from fundamentals & long-term value perspective | Patience with dips, holds quality products |
-| **TechnicalAnalystAgent** 📈 | Evaluates from trend/momentum perspective | Rides winners, cuts losers |
-| **RiskControllerAgent** 🛡️ | One-vote veto on risk issues | Can block any dangerous recommendation |
-| **InvestmentDirectorAgent** 👔 | Moderates discussion, synthesizes consensus | Decides when consensus is reached |
+| Agent | Role | Output |
+|-------|------|--------|
+| **ValueInvestorAgent** 🏦 | Fundamentals & long-term value | 3-5 sentences, specific products |
+| **TechnicalAnalystAgent** 📈 | Trend & momentum signals | 3-5 sentences, trend judgment |
+| **RiskControllerAgent** 🛡️ | Risk concentration & veto | 2-3 sentences, veto if needed |
+| **InvestmentDirectorAgent** 👔 | Synthesizes final decision | Market judgment + actions + risks |
 
-### Key Difference from langgraph-csv-analyst
+### Analysis Pipeline
 
-| Feature | langgraph-csv-analyst | autogen-asset-analyst |
-|---------|----------------------|----------------------|
-| Pattern | Deterministic pipeline | Conversational debate |
-| Agent interaction | Sequential pass-through | Round-robin discussion |
-| Decision making | Last agent decides | Consensus through debate |
-| Risk control | Assessment only | Veto power |
-| Data source | CSV file | asset-lens JSON output |
-| Output | Analysis report | Debate transcript + consensus |
+1. **asset-lens** generates portfolio data via `make calculate`, `make analyze`
+2. **Market Snapshot**: Reads recent 4 weeks of index data (上证, 沪深300, 纳指100, 黄金, 利率)
+3. **Transaction Records**: Extracts recent 60-day buy/sell activity from product CSV
+4. **Knowledge Base**: Queries langchain-llm-toolkit RAG for personal investment preferences
+5. **DataCollector** aggregates everything with currency and annualized-return context
+6. **Agents debate** with concise inputs, Investment Director produces final decision
+7. **HTML Report** generated with compact summary
 
-### Conversation Flow
+## Data Sources
 
-1. **DataCollector** gathers portfolio data from asset-lens (reads `investment_return_analysis_YYYYMMDD.json`)
-2. **InvestmentDirector** starts the discussion with portfolio summary
-3. Each agent takes turns providing their perspective
-4. Agents **debate** specific products and strategies
-5. **RiskController** can veto dangerous recommendations (VETO)
-6. **InvestmentDirector** synthesizes consensus into final decisions
-7. Generate HTML report with discussion transcript + consensus + token usage
+### Portfolio Data (asset-lens)
+The project reads data from [asset-lens](../asset-lens/) via JSON output (`投资收益率分析_YYYYMMDD.json`).
 
-## Data Source
+### Personal Knowledge (langchain-llm-toolkit)
+Retrieves investment preferences and methodology from the RAG vector store configured via `KNOWLEDGE_BASE_PATH`. The knowledge base should contain investment-related documents only (methodology, financial planning, strategy).
 
-The project reads data from [asset-lens](../asset-lens/) via:
-
-1. `make calculate` - via `CalculateReportGenerator` class
-2. `make analyze` - reads `output/investment_return_analysis_YYYYMMDD.json`
-3. `make compare` - optional trend data
-
-The richest data is the JSON output from `analyze`, containing:
-- `portfolio_summary` (total_value, total_profit, return_rates)
-- `top_performers`, `low_returns`, `short_term_observation`
-- `type_distribution`, `risk_distribution`
-- `time_group_analysis`
-- `comprehensive_evaluation`
-- `optimization_suggestions`, `investment_advice`
-- `products` (all product details)
+### Market Data (CSV)
+Reads `资产汇总-表格 1.csv` for index trends and `投资产品-表格 1.csv` for transaction records from ts-demo data directory.
 
 ## Project Structure
 
 ```
 autogen-asset-analyst/
 ├── src/autogen_asset_analyst/
-│   ├── __init__.py          # Package init with version
-│   ├── agents.py            # 4 AutoGen agent definitions
-│   ├── config.py            # Pydantic settings from .env
-│   ├── analyzer.py          # Roundtable orchestration
-│   ├── data_collector.py    # Data collection from asset-lens
-│   ├── visualization.py     # HTML report with debate transcript
-│   └── cli.py               # Typer CLI entry point
+│   ├── __init__.py              # Package init with version
+│   ├── agents.py                # 4 AutoGen agent definitions (compact prompts)
+│   ├── config.py                # Pydantic settings from .env
+│   ├── analyzer.py              # Roundtable orchestration
+│   ├── data_collector.py        # Data collection (JSON + CSV + rates)
+│   ├── knowledge_retriever.py   # RAG knowledge base integration
+│   ├── visualization.py         # HTML report generation
+│   └── cli.py                   # Typer CLI entry point
+├── tests/
+│   ├── __init__.py
+│   ├── test_analyzer.py         # Tests for _build_initial_message
+│   └── test_knowledge_retriever.py  # Tests for knowledge retrieval
+├── output/                      # Generated HTML reports
+├── .env
 ├── .env.example
 ├── pyproject.toml
 ├── README.md
@@ -124,43 +133,44 @@ uv sync
 
 ```bash
 cp .env.example .env
-# Edit .env and set your OPENAI_API_KEY and ASSET_LENS_PATH
+# Edit .env:
+#   OPENAI_API_KEY=your_key
+#   OPENAI_BASE_URL=https://api.deepseek.com
+#   ASSET_LENS_PATH=../asset-lens
+#   KNOWLEDGE_BASE_PATH=../langchain-llm-toolkit
 ```
 
-### 3. Run Roundtable
+### 3. Prepare Data
 
 ```bash
-# Run the full roundtable discussion (uses latest analysis data)
-uv run autogen-analyst roundtable
+# Ensure latest data is generated
+cd ../asset-lens
+make calculate
+make analyze
+```
 
-# Specify asset-lens path
-uv run autogen-analyst roundtable --asset-lens-path ../asset-lens
+### 4. Run Analysis
 
-# Set max discussion rounds
-uv run autogen-analyst roundtable --max-rounds 4
+```bash
+# Full analysis with report
+uv run autogen-analyst report --date 20260619 --output ./output
 
-# Analyze a specific date's data
-uv run autogen-analyst roundtable --date 20260613
-
-# Generate HTML report
-uv run autogen-analyst report --output ./output
-
-# Generate report for a specific date
-uv run autogen-analyst report --date 20260613 --output ./output
+# Roundtable discussion only
+uv run autogen-analyst roundtable --date 20260619
 
 # Show version
 uv run autogen-analyst version
 ```
 
-The CLI outputs token usage after each run:
+### 5. Run Tests
+
+```bash
+uv run pytest tests/ -v
 ```
-Messages: 5 | Vetoes: 1
-Tokens: 27111 (prompt: 22155, completion: 4956)
-```
+
+Output: `20 passed`
 
 ## Configuration
-
-All settings are loaded from `.env` file using pydantic-settings:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -168,9 +178,27 @@ All settings are loaded from `.env` file using pydantic-settings:
 | `OPENAI_API_KEY` | - | OpenAI-compatible API key |
 | `OPENAI_BASE_URL` | `https://api.deepseek.com` | API base URL |
 | `ASSET_LENS_PATH` | `../asset-lens` | Path to asset-lens project |
+| `KNOWLEDGE_BASE_PATH` | `../langchain-llm-toolkit` | Path to RAG knowledge base |
 | `ROUNDTABLE_MAX_ROUNDS` | `6` | Maximum discussion rounds |
 | `API_HOST` | `0.0.0.0` | API server host |
 | `API_PORT` | `8002` | API server port |
+
+## Output Format
+
+The Investment Director produces a compact final report:
+
+```
+## 📊 Market Judgment
+  - Next week direction (one sentence)
+  - Key drivers (rates, policy, index trends)
+
+## 📈 Action Items
+  - Add positions (product + amount + reason)
+  - Reduce/redeem (product + amount + reason)
+  - Hold & watch (product + reason)
+
+## ⚠️ Risk Warnings
+```
 
 ## License
 

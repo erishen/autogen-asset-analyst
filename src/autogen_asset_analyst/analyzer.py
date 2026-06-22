@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from autogen_agentchat.conditions import MaxMessageTermination, TextMentionTermination
@@ -24,8 +25,16 @@ from autogen_asset_analyst.agents import (
 from autogen_asset_analyst.data_collector import (
     DataCollectorError,
     collect_analysis_data,
+    extract_market_snapshot,
+    extract_recent_transactions,
     format_portfolio_context,
+    format_transaction_context,
 )
+from autogen_asset_analyst.knowledge_retriever import (
+    format_knowledge_context,
+    retrieve_personal_knowledge,
+)
+from autogen_asset_analyst.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -44,26 +53,50 @@ class RoundtableResult:
     token_usage: dict[str, int] = field(default_factory=dict)
 
 
-def _build_initial_message(portfolio_context: str) -> str:
+def _build_initial_message(portfolio_context: str, knowledge_context: str = "", tx_context: str = "", market_context: str = "") -> str:
     """Build the initial message for the roundtable discussion.
 
     Args:
         portfolio_context: Formatted portfolio data from DataCollector.
+        knowledge_context: Optional personal investment knowledge from RAG.
+        tx_context: Optional recent transaction records.
+        market_context: Optional market index trends.
 
     Returns:
         The initial message to start the roundtable.
     """
-    return (
+    msg = (
         "各位分析师，欢迎参加今天的投资研究圆桌会议。\n\n"
         "以下是当前投资组合的详细数据：\n\n"
         f"{portfolio_context}\n\n"
-        "请各位从自己的专业角度进行分析和讨论：\n"
-        "1. 价值投资分析师：请从基本面和长期价值角度评估\n"
-        "2. 技术分析师：请从趋势和动量角度分析\n"
-        "3. 风险控制官：请评估风险敞口和集中度\n"
-        "4. 投资总监：请综合各方意见，形成共识决策\n\n"
+    )
+
+    if market_context:
+        msg += f"{market_context}\n\n"
+
+    if tx_context:
+        msg += (
+            f"{tx_context}\n\n"
+        )
+
+    if knowledge_context:
+        msg += (
+            f"{knowledge_context}\n\n"
+            "⚠️ 重要：以上是投资人的个人知识库，反映了其投资偏好、经验风格和长期目标。"
+            "所有分析建议必须基于投资人的实际偏好，不能仅凭短期数据做决策。"
+            "如果投资人有长期持有的偏好，短期亏损不应成为清仓理由。\n\n"
+        )
+
+    msg += (
+        "请各位从自己的专业角度进行分析和讨论。讨论目标：\n\n"
+        "**必须产出以下内容：**\n"
+        "1. 列出当前组合 Top 5 值得继续持有/加仓的产品，说明理由和预期收益\n"
+        "2. 列出需要减仓或赎回的 Top 5 产品，说明止损原因\n"
+        "3. 给出下周具体的调仓建议（产品名称 + 操作 + 金额区间）\n"
+        "4. 优先级排序：哪些操作应该立即执行，哪些可以观察\n\n"
         "请各位畅所欲言，充分讨论。投资总监将在讨论充分后总结共识。"
     )
+    return msg
 
 
 def _extract_vetoes(messages: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -123,10 +156,58 @@ async def run_roundtable_async(
         logger.error("Data collection failed: %s", e)
         return result
 
-    # Step 2: Format context for agents
+    # Step 2: Extract market snapshot for forward-looking analysis
+    market_context = ""
+    try:
+        csv_path = Path(asset_lens_path).parent / "ts-demo" / "data" / f"money_csv_{date}" / "资产汇总-表格 1.csv"
+        if not csv_path.exists():
+            import glob
+            candidates = sorted(glob.glob(str(Path(asset_lens_path).parent / "ts-demo" / "data" / "money_csv_*")))
+            if candidates:
+                csv_path = Path(candidates[-1]) / "资产汇总-表格 1.csv"
+        if csv_path.exists():
+            market_context = extract_market_snapshot(str(csv_path))
+            if market_context:
+                logger.info("Market snapshot extracted")
+    except Exception as e:
+        logger.warning("Failed to extract market snapshot: %s", e)
+
+    # Step 3: Extract recent transaction records
+    tx_context = ""
+    try:
+        csv_path = Path(asset_lens_path).parent / "ts-demo" / "data" / f"money_csv_{date}" / "投资产品-表格 1.csv"
+        if not csv_path.exists():
+            # Try latest data directory
+            import glob
+            candidates = sorted(glob.glob(str(Path(asset_lens_path).parent / "ts-demo" / "data" / "money_csv_*")))
+            if candidates:
+                csv_path = Path(candidates[-1]) / "投资产品-表格 1.csv"
+        if csv_path.exists():
+            transactions = extract_recent_transactions(str(csv_path))
+            tx_context = format_transaction_context(transactions)
+            if tx_context:
+                logger.info("Recent transactions extracted: %d records", len(transactions))
+        else:
+            logger.debug("Transaction CSV not found at %s", csv_path)
+    except Exception as e:
+        logger.warning("Failed to extract transactions: %s", e)
+
+    # Step 3: Retrieve personal investment knowledge from RAG
+    knowledge_context = ""
+    kb_path = settings.KNOWLEDGE_BASE_PATH
+    if kb_path:
+        try:
+            knowledge = retrieve_personal_knowledge(kb_path)
+            knowledge_context = format_knowledge_context(knowledge)
+            if knowledge_context:
+                logger.info("Personal knowledge retrieved and formatted")
+        except Exception as e:
+            logger.warning("Failed to retrieve personal knowledge: %s", e)
+
+    # Step 3: Format context for agents
     portfolio_context = format_portfolio_context(portfolio_data)
 
-    # Step 3: Create model client and agents
+    # Step 4: Create model client and agents
     model_client = get_model_client()
 
     value_investor = create_value_investor_agent(model_client)
@@ -147,8 +228,8 @@ async def run_roundtable_async(
         allow_repeated_speaker=True,
     )
 
-    # Step 5: Build initial message and run conversation
-    initial_message = _build_initial_message(portfolio_context)
+    # Step 5: Build initial message (with personal knowledge) and run conversation
+    initial_message = _build_initial_message(portfolio_context, knowledge_context, tx_context, market_context)
 
     logger.info("Starting roundtable discussion with %d rounds max", max_rounds)
     conversation_result = await team.run(task=initial_message)

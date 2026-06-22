@@ -14,6 +14,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from autogen_asset_analyst.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -209,6 +211,14 @@ def format_portfolio_context(data: dict[str, Any]) -> str:
     """
     lines: list[str] = []
 
+    # Critical context for analysts
+    lines.append("⚠️ 分析注意事项：")
+    lines.append("1. 部分产品为美元/港元计价（标注$或HK$），评估金额时请换算为人民币")
+    lines.append("2. 年化收益率不等于实际收益率——投资天数短的产品的实际亏损/收益远小于年化值")
+    lines.append(f"3. 当前1年期存款基准利率仅{settings.CN_DEPOSIT_RATE}%，判断低效产品时应以此为准，而非2.0%")
+    lines.append("4. 重点关注产品持有期限和实际收益，而非仅看年化数字")
+    lines.append("")
+
     # Portfolio summary
     summary = data.get("portfolio_summary", {})
     if summary:
@@ -225,11 +235,30 @@ def format_portfolio_context(data: dict[str, Any]) -> str:
 
     # Exchange rates
     rates = data.get("exchange_rates", {})
+    usd_rate = float(rates.get('usd_rate', 7.2))
+    hkd_rate = float(rates.get('hkd_rate', 0.92))
     if rates:
         lines.append("=== 汇率信息 ===")
-        lines.append(f"美元汇率: {rates.get('usd_rate', 'N/A')} CNY/USD")
-        lines.append(f"港元汇率: {rates.get('hkd_rate', 'N/A')} CNY/HKD")
+        lines.append(f"美元汇率: {usd_rate:.4f} CNY/USD")
+        lines.append(f"港元汇率: {hkd_rate:.4f} CNY/HKD")
         lines.append("")
+
+    def _is_foreign(p: dict) -> tuple[str, float]:
+        """Detect foreign currency products. Returns (symbol, rate)."""
+        name = p.get("name", "")
+        ptype = p.get("type", p.get("investment_type", ""))
+        if any(kw in name for kw in ["美元", "USD", "QQQ", "Invesco", "富达"]) or "美股" in ptype or "美元" in ptype:
+            return ("$", usd_rate)
+        if any(kw in name for kw in ["港元", "HKD", "港招"]) or "港元" in ptype:
+            return ("HK$", hkd_rate)
+        return ("¥", 1.0)
+
+    def _fmt_amount(amt, symbol, rate):
+        """Format amount with currency, show CNY equivalent for foreign."""
+        if symbol == "¥":
+            return f"{symbol}{amt:.2f}"
+        cny = float(amt) * rate
+        return f"{symbol}{amt:.2f}（≈¥{cny:.2f}）"
 
     # Top performers
     top = data.get("top_performers", [])
@@ -238,19 +267,30 @@ def format_portfolio_context(data: dict[str, Any]) -> str:
         for i, p in enumerate(top, 1):
             name = p.get("name", "未知")
             ret = p.get("return_rate", "N/A")
-            amt = p.get("current_amount", "N/A")
-            lines.append(f"  {i}. {name}: 年化{ret}, 金额¥{amt}")
+            amt = p.get("current_amount", 0)
+            days = p.get("investment_days", p.get("days", ""))
+            sym, rate = _is_foreign(p)
+            amt_str = _fmt_amount(float(amt), sym, rate)
+            day_str = f", 持有{days}天" if days else ""
+            lines.append(f"  {i}. {name}: 年化{ret}, 金额{amt_str}{day_str}")
         lines.append("")
 
     # Low returns
     low = data.get("low_returns", [])
     if low:
-        lines.append("=== 低收益产品 ===")
+        lines.append("=== 低收益/亏损产品 ===")
+        lines.append(f"（注意：年化亏损≠实际亏损；当前存款基准利率为{settings.CN_DEPOSIT_RATE}%，低于此值才需考虑赎回）")
         for p in low[:10]:
             name = p.get("name", "未知")
             ret = p.get("return_rate", p.get("annual_return", "N/A"))
-            amt = p.get("current_amount", "N/A")
-            lines.append(f"  - {name}: 年化{ret}, 金额¥{amt}")
+            amt = p.get("current_amount", 0)
+            days = p.get("investment_days", p.get("days", ""))
+            profit = p.get("profit", p.get("total_profit", ""))
+            sym, rate = _is_foreign(p)
+            amt_str = _fmt_amount(float(amt), sym, rate)
+            day_str = f", 持有{days}天" if days else ""
+            profit_str = f", 实际盈亏{profit}元" if profit else ""
+            lines.append(f"  - {name}: 年化{ret}{day_str}{profit_str}, 金额{amt_str}")
         lines.append("")
 
     # Short term observation
@@ -378,6 +418,166 @@ def format_portfolio_context(data: dict[str, Any]) -> str:
             lines.append(f"  ... 还有{len(products) - 30}个产品")
         lines.append("")
 
+    return "\n".join(lines)
+
+
+def extract_market_snapshot(asset_csv_path: str, weeks: int = 4) -> str:
+    """Extract recent market index trends from the asset summary CSV.
+
+    Args:
+        asset_csv_path: Path to 资产汇总-表格 1.csv.
+        weeks: Number of recent weeks to include.
+
+    Returns:
+        Formatted market snapshot string.
+    """
+    import csv
+    from collections import OrderedDict
+
+    indices = OrderedDict([
+        ("上证指数", "上证"),
+        ("沪深300", "沪深300"),
+        ("中证500", "中证500"),
+        ("纳指100", "纳指100"),
+        ("标普500", "标普500"),
+        ("黄金GLD", "黄金GLD"),
+        ("美联基利率", "利率"),
+        ("恐慌VXX", "恐慌"),
+    ])
+
+    try:
+        with open(asset_csv_path, encoding="utf-8") as f:
+            reader = list(csv.DictReader(f))
+
+        recent = reader[-weeks:] if len(reader) >= weeks else reader
+
+        lines = [
+            "=== 近期市场指数趋势 ===（最近4周周度数据）",
+            "",
+        ]
+
+        for csv_key, label in indices.items():
+            values = []
+            for row in recent:
+                date = row.get("日期", "")
+                val = row.get(csv_key, "").rstrip("%")
+                if val and val != "0":
+                    values.append((date, val))
+
+            if len(values) < 2:
+                continue
+
+            first_val = float(values[0][1])
+            last_val = float(values[-1][1])
+            change = last_val - first_val
+            pct = (change / first_val) * 100 if first_val != 0 else 0
+            trend = "↑" if change > 0 else "↓" if change < 0 else "→"
+
+            lines.append(
+                f"  {label}: {values[0][1]} → {values[-1][1]} "
+                f"({trend}{abs(pct):.1f}%, {len(values)}周)"
+            )
+
+        lines.append("")
+        lines.append("⚠️ 请结合以上指数趋势判断下周市场方向，给出前瞻性分析")
+        lines.append("")
+        lines.append("=== 国内利率环境 ===")
+        lines.append(f"  当前中国1年期存款基准利率: {settings.CN_DEPOSIT_RATE}%")
+        lines.append(f"  当前1年期LPR（贷款市场报价利率）: {settings.CN_LPR_RATE}%")
+        lines.append(f"  当前10年期国债收益率: {settings.CN_BOND_YIELD}%")
+        lines.append("  美联储联邦基金利率: 见上方趋势数据")
+        depo = settings.CN_DEPOSIT_RATE
+        if depo < 2.0:
+            lines.append("  ⚠️ 国内低利率环境下，债券/理财产品收益持续承压，红利/高股息策略相对吸引力上升")
+        return "\n".join(lines)
+
+    except Exception as e:
+        logger.warning("Failed to read market data: %s", e)
+        return ""
+
+
+def extract_recent_transactions(csv_path: str, days: int = 60) -> list[dict[str, Any]]:
+    """Extract recent buy/sell transactions from the 投资产品 CSV.
+
+    Args:
+        csv_path: Path to 投资产品-表格 1.csv.
+        days: Look-back window in days (default 60).
+
+    Returns:
+        List of recent transaction dicts with name, date, action, amount.
+    """
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.now() - timedelta(days=days)
+    recent: list[dict[str, Any]] = []
+
+    try:
+        import csv
+        with open(csv_path, encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                name = row.get("名称", "").strip()
+                tx_field = row.get("交易记录", "").strip()
+                if not tx_field:
+                    continue
+
+                # Parse: "2025/09/15:buy:20000; 2025/12/30:buy:10000; 2026/05/26:buy:10000"
+                for entry in tx_field.split(";"):
+                    entry = entry.strip()
+                    if not entry:
+                        continue
+                    parts = entry.split(":")
+                    if len(parts) < 3:
+                        continue
+                    date_str, action, amount_str = parts[0], parts[1], parts[2]
+                    try:
+                        tx_date = datetime.strptime(date_str, "%Y/%m/%d")
+                    except ValueError:
+                        continue
+                    if tx_date >= cutoff:
+                        recent.append({
+                            "product": name,
+                            "date": date_str,
+                            "action": "买入" if action.strip() == "buy" else "卖出",
+                            "amount": float(amount_str),
+                        })
+    except Exception as e:
+        logger.warning("Failed to read transaction CSV: %s", e)
+        return []
+
+    # Sort by date descending, most recent first
+    recent.sort(key=lambda x: x["date"], reverse=True)
+    return recent
+
+
+def format_transaction_context(transactions: list[dict[str, Any]]) -> str:
+    """Format recent transactions into a readable context string."""
+    if not transactions:
+        return ""
+
+    # Show top 25 most recent, summarize the rest
+    display = transactions[:25]
+
+    lines = [
+        "=== 近期交易记录（最近60天） ===",
+        "以下产品在最近两个月内有买入/卖出操作，分析时请考虑交易时点和频率：",
+        "",
+    ]
+    for tx in display:
+        lines.append(f"  {tx['date']}: {tx['action']}「{tx['product']}」{tx['amount']:.0f}元")
+
+    if len(transactions) > 25:
+        lines.append(f"  ... 还有{len(transactions) - 25}笔交易")
+
+    # Summarize patterns
+    buys = sum(1 for t in transactions if t["action"] == "买入")
+    sells = sum(1 for t in transactions if t["action"] == "卖出")
+    buy_amt = sum(t["amount"] for t in transactions if t["action"] == "买入")
+    sell_amt = sum(t["amount"] for t in transactions if t["action"] == "卖出")
+
+    lines.append("")
+    lines.append(f"  总结：共{buys}笔买入(¥{buy_amt:.0f})，{sells}笔卖出(¥{sell_amt:.0f})，净{'流入' if buy_amt > sell_amt else '流出'}¥{abs(buy_amt - sell_amt):.0f}")
+    lines.append("")
     return "\n".join(lines)
 
 
