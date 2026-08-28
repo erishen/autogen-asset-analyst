@@ -62,8 +62,23 @@ dev-dependencies = [
     "bandit>=1.9.0",
 ]
 
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "PERF", "RUF"]
+ignore = ["S101", "RUF001", "RUF002", "RUF003", "PERF203", "PERF401", "RUF012", "SIM117", "E501", "E402", "N806", "N803", "E741", "B008", "SIM115", "UP041", "UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B", "RUF012"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["autogen_asset_analyst"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [tool.mypy]
 python_version = "3.11"
