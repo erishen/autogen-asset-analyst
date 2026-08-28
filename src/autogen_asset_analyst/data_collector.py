@@ -133,12 +133,12 @@ def collect_calculate_data(asset_lens_path: str) -> dict[str, Any]:
 
     # Try importing from asset_lens directly
     try:
+        from datetime import datetime
+        from decimal import Decimal
+
         from asset_lens.data.csv_parser import CSVParser
         from asset_lens.data.models import Portfolio
         from asset_lens.report.calculate_report import CalculateReportGenerator
-
-        from datetime import datetime
-        from decimal import Decimal
 
         products = CSVParser.load_data()
         data_dir = path / "data" / "sample_data"

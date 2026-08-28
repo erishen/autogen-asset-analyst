@@ -22,6 +22,7 @@ from autogen_asset_analyst.agents import (
     create_value_investor_agent,
     get_model_client,
 )
+from autogen_asset_analyst.config import settings
 from autogen_asset_analyst.data_collector import (
     DataCollectorError,
     collect_analysis_data,
@@ -34,7 +35,6 @@ from autogen_asset_analyst.knowledge_retriever import (
     format_knowledge_context,
     retrieve_personal_knowledge,
 )
-from autogen_asset_analyst.config import settings
 
 logger = logging.getLogger(__name__)
 

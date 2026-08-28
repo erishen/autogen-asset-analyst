@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -25,13 +24,13 @@ console = Console()
 
 @app.command()
 def roundtable(
-    asset_lens_path: Optional[str] = typer.Option(
+    asset_lens_path: str | None = typer.Option(
         None, "--asset-lens-path", "-p", help="Path to the asset-lens project directory"
     ),
-    max_rounds: Optional[int] = typer.Option(
+    max_rounds: int | None = typer.Option(
         None, "--max-rounds", "-r", help="Maximum number of discussion rounds"
     ),
-    date: Optional[str] = typer.Option(
+    date: str | None = typer.Option(
         None, "--date", "-d", help="Analysis date (YYYYMMDD), e.g. 20260613"
     ),
 ) -> None:
@@ -54,7 +53,7 @@ def roundtable(
 
     # Show agent lineup
     console.print("\n[bold]Roundtable Participants:[/bold]")
-    for agent_key, config in AGENT_CONFIG.items():
+    for config in AGENT_CONFIG.values():
         console.print(f"  {config['avatar']} {config['name']}")
 
     with console.status("[bold green]Running roundtable discussion..."):
@@ -106,16 +105,16 @@ def roundtable(
 
 @app.command()
 def report(
-    asset_lens_path: Optional[str] = typer.Option(
+    asset_lens_path: str | None = typer.Option(
         None, "--asset-lens-path", "-p", help="Path to the asset-lens project directory"
     ),
-    output: Optional[str] = typer.Option(
+    output: str | None = typer.Option(
         None, "--output", "-o", help="Output directory for the HTML report (default: ./output)"
     ),
-    max_rounds: Optional[int] = typer.Option(
+    max_rounds: int | None = typer.Option(
         None, "--max-rounds", "-r", help="Maximum number of discussion rounds"
     ),
-    date: Optional[str] = typer.Option(
+    date: str | None = typer.Option(
         None, "--date", "-d", help="Analysis date (YYYYMMDD), e.g. 20260613"
     ),
 ) -> None:

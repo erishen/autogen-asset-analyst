@@ -3,8 +3,6 @@
 import sys
 from unittest.mock import Mock, patch
 
-import pytest
-
 from autogen_asset_analyst.knowledge_retriever import (
     _ensure_kb_path,
     format_knowledge_context,

@@ -274,7 +274,7 @@ def generate_html_report(
 
     # Agent legend
     legend_items = []
-    for agent_key, config in AGENT_CONFIG.items():
+    for config in AGENT_CONFIG.values():
         legend_items.append(
             f'<span class="legend-item" style="color: {config["color"]};">'
             f'{config["avatar"]} {config["name"]}</span>'

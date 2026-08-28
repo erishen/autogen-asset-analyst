@@ -124,7 +124,7 @@ def format_knowledge_context(knowledge: dict[str, list[dict[str, Any]]]) -> str:
         if not docs:
             continue
         lines.append(f"关于「{query}」的相关知识：")
-        for i, doc in enumerate(docs, 1):
+        for doc in docs:
             lines.append(f"  [{doc['category']}] {doc['content'][:300]}")
         lines.append("")
 
