@@ -1,6 +1,5 @@
 """Tests for analyzer module."""
 
-
 from autogen_asset_analyst.analyzer import _build_initial_message
 
 

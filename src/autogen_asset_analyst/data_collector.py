@@ -146,6 +146,7 @@ def collect_calculate_data(asset_lens_path: str) -> dict[str, Any]:
             usd_rate, hkd_rate = CSVParser.get_exchange_rates(data_dir)
         except (ValueError, KeyError, TypeError):
             from asset_lens.config import config
+
             usd_rate = config.default_usd_rate
             hkd_rate = config.default_hkd_rate
 
@@ -157,6 +158,7 @@ def collect_calculate_data(asset_lens_path: str) -> dict[str, Any]:
 
         reference_date = datetime.now()
         from asset_lens.data.parsers.investment_calculator import InvestmentCalculator
+
         for product in portfolio.products:
             InvestmentCalculator.calculate_product_returns(product, reference_date)
 
@@ -235,8 +237,8 @@ def format_portfolio_context(data: dict[str, Any]) -> str:
 
     # Exchange rates
     rates = data.get("exchange_rates", {})
-    usd_rate = float(rates.get('usd_rate', 7.2))
-    hkd_rate = float(rates.get('hkd_rate', 0.92))
+    usd_rate = float(rates.get("usd_rate", 7.2))
+    hkd_rate = float(rates.get("hkd_rate", 0.92))
     if rates:
         lines.append("=== 汇率信息 ===")
         lines.append(f"美元汇率: {usd_rate:.4f} CNY/USD")
@@ -279,7 +281,9 @@ def format_portfolio_context(data: dict[str, Any]) -> str:
     low = data.get("low_returns", [])
     if low:
         lines.append("=== 低收益/亏损产品 ===")
-        lines.append(f"（注意：年化亏损≠实际亏损；当前存款基准利率为{settings.CN_DEPOSIT_RATE}%，低于此值才需考虑赎回）")
+        lines.append(
+            f"（注意：年化亏损≠实际亏损；当前存款基准利率为{settings.CN_DEPOSIT_RATE}%，低于此值才需考虑赎回）"
+        )
         for p in low[:10]:
             name = p.get("name", "未知")
             ret = p.get("return_rate", p.get("annual_return", "N/A"))
@@ -434,16 +438,18 @@ def extract_market_snapshot(asset_csv_path: str, weeks: int = 4) -> str:
     import csv
     from collections import OrderedDict
 
-    indices = OrderedDict([
-        ("上证指数", "上证"),
-        ("沪深300", "沪深300"),
-        ("中证500", "中证500"),
-        ("纳指100", "纳指100"),
-        ("标普500", "标普500"),
-        ("黄金GLD", "黄金GLD"),
-        ("美联基利率", "利率"),
-        ("恐慌VXX", "恐慌"),
-    ])
+    indices = OrderedDict(
+        [
+            ("上证指数", "上证"),
+            ("沪深300", "沪深300"),
+            ("中证500", "中证500"),
+            ("纳指100", "纳指100"),
+            ("标普500", "标普500"),
+            ("黄金GLD", "黄金GLD"),
+            ("美联基利率", "利率"),
+            ("恐慌VXX", "恐慌"),
+        ]
+    )
 
     try:
         with open(asset_csv_path, encoding="utf-8") as f:
@@ -473,10 +479,7 @@ def extract_market_snapshot(asset_csv_path: str, weeks: int = 4) -> str:
             pct = (change / first_val) * 100 if first_val != 0 else 0
             trend = "↑" if change > 0 else "↓" if change < 0 else "→"
 
-            lines.append(
-                f"  {label}: {values[0][1]} → {values[-1][1]} "
-                f"({trend}{abs(pct):.1f}%, {len(values)}周)"
-            )
+            lines.append(f"  {label}: {values[0][1]} → {values[-1][1]} ({trend}{abs(pct):.1f}%, {len(values)}周)")
 
         lines.append("")
         lines.append("⚠️ 请结合以上指数趋势判断下周市场方向，给出前瞻性分析")
@@ -513,6 +516,7 @@ def extract_recent_transactions(csv_path: str, days: int = 60) -> list[dict[str,
 
     try:
         import csv
+
         with open(csv_path, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
@@ -535,12 +539,14 @@ def extract_recent_transactions(csv_path: str, days: int = 60) -> list[dict[str,
                     except ValueError:
                         continue
                     if tx_date >= cutoff:
-                        recent.append({
-                            "product": name,
-                            "date": date_str,
-                            "action": "买入" if action.strip() == "buy" else "卖出",
-                            "amount": float(amount_str),
-                        })
+                        recent.append(
+                            {
+                                "product": name,
+                                "date": date_str,
+                                "action": "买入" if action.strip() == "buy" else "卖出",
+                                "amount": float(amount_str),
+                            }
+                        )
     except Exception as e:
         logger.warning("Failed to read transaction CSV: %s", e)
         return []
@@ -576,7 +582,9 @@ def format_transaction_context(transactions: list[dict[str, Any]]) -> str:
     sell_amt = sum(t["amount"] for t in transactions if t["action"] == "卖出")
 
     lines.append("")
-    lines.append(f"  总结：共{buys}笔买入(¥{buy_amt:.0f})，{sells}笔卖出(¥{sell_amt:.0f})，净{'流入' if buy_amt > sell_amt else '流出'}¥{abs(buy_amt - sell_amt):.0f}")
+    lines.append(
+        f"  总结：共{buys}笔买入(¥{buy_amt:.0f})，{sells}笔卖出(¥{sell_amt:.0f})，净{'流入' if buy_amt > sell_amt else '流出'}¥{abs(buy_amt - sell_amt):.0f}"
+    )
     lines.append("")
     return "\n".join(lines)
 
@@ -602,9 +610,7 @@ def _run_make_command(project_path: Path, target: str) -> str:
         timeout=300,
     )
     if result.returncode != 0:
-        raise subprocess.SubprocessError(
-            f"`make {target}` failed with exit code {result.returncode}: {result.stderr}"
-        )
+        raise subprocess.SubprocessError(f"`make {target}` failed with exit code {result.returncode}: {result.stderr}")
     return result.stdout
 
 

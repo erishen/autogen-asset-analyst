@@ -69,19 +69,19 @@ def _build_summary_cards(portfolio_data: dict[str, Any]) -> str:
     cards_html = f"""
     <div class="stats-grid">
         <div class="stat-card" style="border-left-color: #2563eb;">
-            <div class="stat-value">{summary.get('total_value', 'N/A')}</div>
+            <div class="stat-value">{summary.get("total_value", "N/A")}</div>
             <div class="stat-label">当前总资产(元)</div>
         </div>
         <div class="stat-card" style="border-left-color: #059669;">
-            <div class="stat-value">{summary.get('total_profit', 'N/A')}</div>
+            <div class="stat-value">{summary.get("total_profit", "N/A")}</div>
             <div class="stat-label">未实现收益(元)</div>
         </div>
         <div class="stat-card" style="border-left-color: #7c3aed;">
-            <div class="stat-value">{summary.get('overall_return_rate', 'N/A')}</div>
+            <div class="stat-value">{summary.get("overall_return_rate", "N/A")}</div>
             <div class="stat-label">整体收益率</div>
         </div>
         <div class="stat-card" style="border-left-color: #f59e0b;">
-            <div class="stat-value">{summary.get('positive_avg_return', 'N/A')}</div>
+            <div class="stat-value">{summary.get("positive_avg_return", "N/A")}</div>
             <div class="stat-label">正收益平均年化</div>
         </div>
     </div>"""
@@ -94,14 +94,13 @@ def _build_summary_cards(portfolio_data: dict[str, Any]) -> str:
             if isinstance(stats, dict):
                 pct = stats.get("percentage", "N/A")
                 type_items.append(
-                    f'<span class="type-badge" style="background: #f1f5f9; color: #475569;">'
-                    f"{type_name} {pct}</span>"
+                    f'<span class="type-badge" style="background: #f1f5f9; color: #475569;">{type_name} {pct}</span>'
                 )
         if type_items:
             cards_html += f"""
             <div class="type-distribution">
                 <div class="section-label">投资类型分布</div>
-                <div class="type-badges">{''.join(type_items)}</div>
+                <div class="type-badges">{"".join(type_items)}</div>
             </div>"""
 
     # Risk distribution
@@ -112,14 +111,13 @@ def _build_summary_cards(portfolio_data: dict[str, Any]) -> str:
             if isinstance(stats, dict):
                 pct = stats.get("percentage", "N/A")
                 risk_items.append(
-                    f'<span class="type-badge" style="background: #fef2f2; color: #991b1b;">'
-                    f"{risk_name} {pct}</span>"
+                    f'<span class="type-badge" style="background: #fef2f2; color: #991b1b;">{risk_name} {pct}</span>'
                 )
         if risk_items:
             cards_html += f"""
             <div class="type-distribution">
                 <div class="section-label">风险等级分布</div>
-                <div class="type-badges">{''.join(risk_items)}</div>
+                <div class="type-badges">{"".join(risk_items)}</div>
             </div>"""
 
     return cards_html
@@ -141,13 +139,16 @@ def _build_discussion_transcript(messages: list[dict[str, str]]) -> str:
     for i, msg in enumerate(messages, 1):
         source = msg.get("source", "Unknown")
         content = msg.get("content", "")
-        config = AGENT_CONFIG.get(source, {
-            "name": source,
-            "avatar": "💬",
-            "color": "#64748b",
-            "bg_color": "#f8fafc",
-            "border_color": "#cbd5e1",
-        })
+        config = AGENT_CONFIG.get(
+            source,
+            {
+                "name": source,
+                "avatar": "💬",
+                "color": "#64748b",
+                "bg_color": "#f8fafc",
+                "border_color": "#cbd5e1",
+            },
+        )
 
         # Check for veto
         is_veto = source == "RiskControllerAgent" and "【否决】" in content
@@ -161,10 +162,10 @@ def _build_discussion_transcript(messages: list[dict[str, str]]) -> str:
         content_html = _format_markdown_text(display_content)
 
         transcript_parts.append(f"""
-        <div class="message-card" style="border-left: 4px solid {config['border_color']}; background: {config['bg_color']};">
+        <div class="message-card" style="border-left: 4px solid {config["border_color"]}; background: {config["bg_color"]};">
             <div class="message-header">
-                <span class="agent-avatar">{config['avatar']}</span>
-                <span class="agent-name" style="color: {config['color']};">{config['name']}</span>
+                <span class="agent-avatar">{config["avatar"]}</span>
+                <span class="agent-name" style="color: {config["color"]};">{config["name"]}</span>
                 <span class="message-index">#{i}</span>
                 {veto_badge}
             </div>
@@ -192,13 +193,11 @@ def _build_consensus_section(result: RoundtableResult) -> str:
     if result.vetoes:
         veto_items = []
         for v in result.vetoes:
-            veto_items.append(
-                f'<div class="veto-item">{_format_markdown_text(v["content"])}</div>'
-            )
+            veto_items.append(f'<div class="veto-item">{_format_markdown_text(v["content"])}</div>')
         vetoes_html = f"""
         <div class="vetoes-section">
             <h3>🛡️ 风险否决记录</h3>
-            {''.join(veto_items)}
+            {"".join(veto_items)}
         </div>"""
 
     return f"""
@@ -244,7 +243,7 @@ def _build_risk_warnings_section(portfolio_data: dict[str, Any]) -> str:
     return f"""
     <div class="risk-warnings-section">
         <h2>⚠️ 风险警告</h2>
-        {''.join(warning_items)}
+        {"".join(warning_items)}
     </div>"""
 
 
@@ -276,8 +275,7 @@ def generate_html_report(
     legend_items = []
     for config in AGENT_CONFIG.values():
         legend_items.append(
-            f'<span class="legend-item" style="color: {config["color"]};">'
-            f'{config["avatar"]} {config["name"]}</span>'
+            f'<span class="legend-item" style="color: {config["color"]};">{config["avatar"]} {config["name"]}</span>'
         )
     legend_html = " | ".join(legend_items)
 
@@ -520,7 +518,7 @@ def generate_html_report(
         <h1>🏛️ 投资研究圆桌会议</h1>
         <div class="subtitle">Investment Research Roundtable</div>
         <div class="meta">
-            生成时间: {now} | 数据源: {asset_lens_path or 'asset-lens'}
+            生成时间: {now} | 数据源: {asset_lens_path or "asset-lens"}
         </div>
     </div>
 

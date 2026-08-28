@@ -22,8 +22,8 @@ class Settings(BaseSettings):
 
     # Domestic Interest Rates (China)
     CN_DEPOSIT_RATE: float = 1.45  # 1年期存款基准利率(%)
-    CN_LPR_RATE: float = 3.1       # 1年期LPR(%)
-    CN_BOND_YIELD: float = 1.7     # 10年期国债收益率(%)
+    CN_LPR_RATE: float = 3.1  # 1年期LPR(%)
+    CN_BOND_YIELD: float = 1.7  # 10年期国债收益率(%)
 
     # Application Settings
     APP_NAME: str = "AutoGen Asset Analyst"

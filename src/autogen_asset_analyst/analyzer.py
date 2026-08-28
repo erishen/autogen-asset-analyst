@@ -53,7 +53,9 @@ class RoundtableResult:
     token_usage: dict[str, int] = field(default_factory=dict)
 
 
-def _build_initial_message(portfolio_context: str, knowledge_context: str = "", tx_context: str = "", market_context: str = "") -> str:
+def _build_initial_message(
+    portfolio_context: str, knowledge_context: str = "", tx_context: str = "", market_context: str = ""
+) -> str:
     """Build the initial message for the roundtable discussion.
 
     Args:
@@ -65,19 +67,13 @@ def _build_initial_message(portfolio_context: str, knowledge_context: str = "", 
     Returns:
         The initial message to start the roundtable.
     """
-    msg = (
-        "各位分析师，欢迎参加今天的投资研究圆桌会议。\n\n"
-        "以下是当前投资组合的详细数据：\n\n"
-        f"{portfolio_context}\n\n"
-    )
+    msg = f"各位分析师，欢迎参加今天的投资研究圆桌会议。\n\n以下是当前投资组合的详细数据：\n\n{portfolio_context}\n\n"
 
     if market_context:
         msg += f"{market_context}\n\n"
 
     if tx_context:
-        msg += (
-            f"{tx_context}\n\n"
-        )
+        msg += f"{tx_context}\n\n"
 
     if knowledge_context:
         msg += (
@@ -162,6 +158,7 @@ async def run_roundtable_async(
         csv_path = Path(asset_lens_path).parent / "ts-demo" / "data" / f"money_csv_{date}" / "资产汇总-表格 1.csv"
         if not csv_path.exists():
             import glob
+
             candidates = sorted(glob.glob(str(Path(asset_lens_path).parent / "ts-demo" / "data" / "money_csv_*")))
             if candidates:
                 csv_path = Path(candidates[-1]) / "资产汇总-表格 1.csv"
@@ -179,6 +176,7 @@ async def run_roundtable_async(
         if not csv_path.exists():
             # Try latest data directory
             import glob
+
             candidates = sorted(glob.glob(str(Path(asset_lens_path).parent / "ts-demo" / "data" / "money_csv_*")))
             if candidates:
                 csv_path = Path(candidates[-1]) / "投资产品-表格 1.csv"
@@ -239,10 +237,12 @@ async def run_roundtable_async(
     total_prompt_tokens = 0
     total_completion_tokens = 0
     for msg in conversation_result.messages:
-        messages.append({
-            "source": msg.source,
-            "content": msg.content if isinstance(msg.content, str) else str(msg.content),
-        })
+        messages.append(
+            {
+                "source": msg.source,
+                "content": msg.content if isinstance(msg.content, str) else str(msg.content),
+            }
+        )
         # Extract token usage from message metadata
         if hasattr(msg, "models_usage") and msg.models_usage:
             total_prompt_tokens += msg.models_usage.prompt_tokens

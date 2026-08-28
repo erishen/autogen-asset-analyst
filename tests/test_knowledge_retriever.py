@@ -42,9 +42,7 @@ class TestFormatKnowledgeContext:
         assert format_knowledge_context({"q": []}) == ""
 
     def test_single_query(self):
-        knowledge = {"投资策略": [
-            {"content": "偏好低风险", "category": "investment", "source": "g.md"}
-        ]}
+        knowledge = {"投资策略": [{"content": "偏好低风险", "category": "investment", "source": "g.md"}]}
         result = format_knowledge_context(knowledge)
         assert "投资人个人知识库" in result
         assert "投资策略" in result
@@ -171,9 +169,7 @@ class TestRetrievePersonalKnowledge:
         try:
             with patch("autogen_asset_analyst.knowledge_retriever._ensure_kb_path") as mock_ensure:
                 mock_ensure.return_value = tmp_path
-                knowledge = retrieve_personal_knowledge(
-                    str(tmp_path), queries=["q1", "q2", "q3"]
-                )
+                knowledge = retrieve_personal_knowledge(str(tmp_path), queries=["q1", "q2", "q3"])
         finally:
             sys.modules.pop("langchain_llm_toolkit.rag", None)
             sys.modules.pop("langchain_llm_toolkit", None)

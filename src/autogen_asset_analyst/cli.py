@@ -27,12 +27,8 @@ def roundtable(
     asset_lens_path: str | None = typer.Option(
         None, "--asset-lens-path", "-p", help="Path to the asset-lens project directory"
     ),
-    max_rounds: int | None = typer.Option(
-        None, "--max-rounds", "-r", help="Maximum number of discussion rounds"
-    ),
-    date: str | None = typer.Option(
-        None, "--date", "-d", help="Analysis date (YYYYMMDD), e.g. 20260613"
-    ),
+    max_rounds: int | None = typer.Option(None, "--max-rounds", "-r", help="Maximum number of discussion rounds"),
+    date: str | None = typer.Option(None, "--date", "-d", help="Analysis date (YYYYMMDD), e.g. 20260613"),
 ) -> None:
     """Run the Investment Research Roundtable discussion."""
     lens_path = asset_lens_path or settings.ASSET_LENS_PATH
@@ -45,11 +41,12 @@ def roundtable(
         raise typer.Exit(code=1)
 
     date_label = f", Date: [bold]{date}[/bold]" if date else ""
-    console.print(Panel(
-        f"Asset-Lens: [bold]{lens_path}[/bold]\n"
-        f"Max Rounds: [bold]{rounds}[/bold]{date_label}",
-        title="Investment Research Roundtable",
-    ))
+    console.print(
+        Panel(
+            f"Asset-Lens: [bold]{lens_path}[/bold]\nMax Rounds: [bold]{rounds}[/bold]{date_label}",
+            title="Investment Research Roundtable",
+        )
+    )
 
     # Show agent lineup
     console.print("\n[bold]Roundtable Participants:[/bold]")
@@ -111,12 +108,8 @@ def report(
     output: str | None = typer.Option(
         None, "--output", "-o", help="Output directory for the HTML report (default: ./output)"
     ),
-    max_rounds: int | None = typer.Option(
-        None, "--max-rounds", "-r", help="Maximum number of discussion rounds"
-    ),
-    date: str | None = typer.Option(
-        None, "--date", "-d", help="Analysis date (YYYYMMDD), e.g. 20260613"
-    ),
+    max_rounds: int | None = typer.Option(None, "--max-rounds", "-r", help="Maximum number of discussion rounds"),
+    date: str | None = typer.Option(None, "--date", "-d", help="Analysis date (YYYYMMDD), e.g. 20260613"),
 ) -> None:
     """Generate an HTML report from the roundtable discussion."""
     lens_path = asset_lens_path or settings.ASSET_LENS_PATH
@@ -128,10 +121,12 @@ def report(
         raise typer.Exit(code=1)
 
     date_label = f", Date: [bold]{date}[/bold]" if date else ""
-    console.print(Panel(
-        f"Generating report from: [bold]{lens_path}[/bold]{date_label}",
-        title="AutoGen Asset Analyst - Report",
-    ))
+    console.print(
+        Panel(
+            f"Generating report from: [bold]{lens_path}[/bold]{date_label}",
+            title="AutoGen Asset Analyst - Report",
+        )
+    )
 
     with console.status("[bold green]Running roundtable and generating report..."):
         result = run_roundtable(lens_path, rounds, date=date)
@@ -155,6 +150,7 @@ def report(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     from datetime import datetime
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = output_dir / f"roundtable_report_{timestamp}.html"
 
