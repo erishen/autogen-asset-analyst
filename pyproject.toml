@@ -87,4 +87,4 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 
 [tool.uv.sources]
-investkit-utils = { workspace = true }
+investkit-utils = { git = "https://github.com/erishen/investkit_utils.git" }
