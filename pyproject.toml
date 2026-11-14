@@ -7,7 +7,7 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["autogen", "asset", "roundtable", "multi-agent", "investment", "debate"]
 classifiers = [
     "Development Status :: 4 - Beta",
